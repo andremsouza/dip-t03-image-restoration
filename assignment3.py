@@ -1,5 +1,20 @@
-# coding: utf-8
-#%%
+# -*- coding: utf-8 -*-
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:light
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.4'
+#       jupytext_version: 1.1.1
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
+# +
 # Name: André Moreira Souza
 # NUSP: 9778985
 # Course Code: SCC0251
@@ -7,17 +22,18 @@
 # Assignment: 2 - Image enhancement and filtering
 
 
-#%%
+# -
+
 import numpy as np
 import scipy
 import imageio
 import scipy
 import scipy.fftpack
 
-#%% [markdown]
-# ## Defining functions
 
-#%%
+#  ## Defining functions
+
+# +
 # F == 1
 def adaptive_denoising(g, gamma, k, mode):
 	img_final = np.zeros(g.shape, dtype=np.double)
@@ -68,15 +84,21 @@ def adaptive_denoising(g, gamma, k, mode):
 # F == 2
 def constrained_least_squares(g, gamma, k, sigma):
 	# img_final = np.zeros(g.shape, dtype=np.double)
-	p = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]], dtype=np.double) # laplacian operator
-	h = gaussian_filter(k, sigma) # gaussian filter
-	# padding arrays of invalid shape
-	pad_p = [(g.shape[0] - p.shape[0]) // 2, (g.shape[1] - p.shape[1]) // 2]
-	pad_h = [(g.shape[0] - h.shape[0]) // 2, (g.shape[1] - h.shape[1]) // 2]
-	p = np.pad(p, ((pad_p[0], pad_p[0]), (pad_p[1], pad_p[1])), 'constant', constant_values=0)
-	h = np.pad(h, ((pad_h[0], pad_h[0]), (pad_h[1], pad_h[1])), 'constant', constant_values=0)
-	print("p: ", p.shape)
-	print("h: ", p.shape)
+	# Manually padding arrays of invalid shape
+	p = np.zeros(g.shape, dtype=np.double)
+	h = np.zeros(g.shape, dtype=np.double)
+	lower_p_0 = (g.shape[0] // 2) - (3 // 2)
+	upper_p_0 = (g.shape[0] // 2) + (3 // 2) + 1
+	lower_p_1 = (g.shape[1] // 2) - (3 // 2)
+	upper_p_1 = (g.shape[1] // 2) + (3 // 2) + 1
+	p[lower_p_0 : upper_p_0, lower_p_1 : upper_p_1] = \
+		np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]], dtype=np.double) # laplacian operator
+	lower_h_0 = (g.shape[0] // 2) - (k // 2)
+	upper_h_0 = (g.shape[0] // 2) + (k // 2) + 1
+	lower_h_1 = (g.shape[1] // 2) - (k // 2)
+	upper_h_1 = (g.shape[1] // 2) + (k // 2) + 1
+	h[lower_h_0 : upper_h_0, lower_h_1 : upper_h_1] = \
+		gaussian_filter(k, sigma) # gaussian filter
 	# calculating 2d-fft of arrays
 	G = scipy.fftpack.fft2(g)
 	P = scipy.fftpack.fft2(p)
@@ -84,10 +106,9 @@ def constrained_least_squares(g, gamma, k, sigma):
 	H_conj = np.conj(H)
 
 	# calculating final image
-	
-	img_final = (H_conj / (np.square(np.absolute(H)) + gamma * np.square(np.absolute(P)))) * G
-
-	return img_final
+	img_final = np.multiply((H_conj / (np.square(np.absolute(H)) + gamma * np.square(np.absolute(P)))), G)
+    
+	return np.roll(np.real(scipy.fftpack.ifft2(img_final)), np.array(g.shape)//2, (0, 1))
 
 # gaussian_filter function
 def gaussian_filter(k=3, sigma=1.0):
@@ -104,10 +125,11 @@ def normalize (arr, maxvalue):
 def rmse (img_g, img_r):
 	return np.sqrt(np.sum(np.power(img_g.astype(np.double) - img_r.astype(np.double), 2))/(img_g.shape[0]*img_g.shape[1]))
 
-#%% [markdown]
-# ## Main function
+# -
 
-#%%
+#  ## Main function
+
+# +
 if __name__ == '__main__':
 	# get user input
 	fpath, gpath = str(input()).strip(), str(input()).strip() # f = reference image, g = degraded image
@@ -133,172 +155,3 @@ if __name__ == '__main__':
 	print('%.3f' % rmse(f, f_r))
 
 
-#%%
-import matplotlib.pyplot as plt
-f_r = constrained_least_squares(g, gamma, k, sigma)
-print('%.3f' % rmse(f, f_r))
-
-plt.figure(figsize=(18,6))
-plt.subplot(131)
-plt.imshow(f, cmap="gray", vmin=0, vmax=255)
-plt.axis('off')
-plt.subplot(132)
-plt.imshow(g, cmap="gray", vmin=0, vmax=255)
-plt.axis('off')
-plt.subplot(133)
-plt.imshow(f_r, cmap="gray", vmin=0, vmax=255)
-plt.axis('off')
-
-# #%%
-# f_r = adaptive_denoising(g, gamma, k, mode)
-# print('%.3f' % rmse(f, f_r))
-
-
-# #%%
-# plt.figure(figsize=(18,6))
-# plt.subplot(131)
-# plt.imshow(f, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-# plt.subplot(132)
-# plt.imshow(g, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-# plt.subplot(133)
-# plt.imshow(f_r, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-
-
-# #%%
-# def uniform_noise(size, prob=0.1):
-#     '''
-#     Generates a matrix with uniform noise in the range [0-255] to be added to an image
-	
-#     :param size: tuple defining the size of the noise matrix 
-#     :param prob: probability for the uniform noise generation 
-#     :type prob: float
-#     :return matrix with uniform noise to be added to image
-#     '''
-	
-#     levels = int((prob * 255) // 2)
-#     noise = np.random.randint(-levels, levels, size)
-	
-#     return noise
-
-# def gaussian_noise(size, mean=0, std=0.01):
-#     '''
-#     Generates a matrix with Gaussian noise in the range [0-255] to be added to an image
-	
-#     :param size: tuple defining the size of the noise matrix 
-#     :param mean: mean of the Gaussian distribution
-#     :param std: standard deviation of the Gaussian distribution, default 0.01
-#     :return matrix with Gaussian noise to be added to image
-#     '''
-#     noise = np.multiply(np.random.normal(mean, std, size), 255)
-	
-#     return noise
-
-# def impulsive_noise(image, prob=0.1, mode='salt_and_pepper'):
-#     '''
-#     Returns image with impulsive noise (0 and/or 255) to replace pixels in the image with some probability
-	
-#     :param image: input image
-#     :param prob: probability for the impulsive noise generation 
-#     :param mode: type of noise, 'salt', 'pepper' or 'salt_and_pepper' (default)
-#     :type prob: float
-#     :return noisy image with impulsive noise
-#     '''
-
-#     noise = np.array(image, copy=True)
-#     for x in np.arange(image.shape[0]):
-#         for y in np.arange(image.shape[1]):
-#             rnd = np.random.random()
-#             if rnd < prob:
-#                 rnd = np.random.random()
-#                 if rnd > 0.5:
-#                     noise[x,y] = 255
-#                 else:
-#                     noise[x,y] = 0
-	
-#     return noise
-
-
-# #%%
-# uni_noise = uniform_noise(f.shape, prob=0.15)
-# img_uni = np.clip(f.astype(int)+uni_noise, 0, 255)
-
-# hist_img,_ = np.histogram(f, bins=256, range=(0,255))
-# hist_uni,_ = np.histogram(img_uni, bins=256, range=(0,255))
-
-
-# #%%
-# f_r = adaptive_denoising(img_uni, gamma, k, mode)
-# print(rmse(f, f_r))
-
-
-# #%%
-# plt.figure(figsize=(18,6))
-# plt.subplot(131)
-# plt.imshow(f, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-# plt.subplot(132)
-# plt.imshow(img_uni, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-# plt.subplot(133)
-# plt.imshow(f_r, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-
-
-# #%%
-# gau_noise = gaussian_noise(f.shape, mean=0, std=0.05)
-# img_gau = np.clip(f.astype(int)+gau_noise, 0, 255)
-
-# hist_gau,_ = np.histogram(img_gau, bins=256, range=(0,255))
-
-
-# #%%
-# f_r = adaptive_denoising(img_gau, gamma, k, mode)
-# print(rmse(f, f_r))
-
-
-# #%%
-# plt.figure(figsize=(18,6))
-# plt.subplot(131)
-# plt.imshow(f, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-# plt.subplot(132)
-# plt.imshow(img_gau, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-# plt.subplot(133)
-# plt.imshow(f_r, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-
-
-# #%%
-# img_imp = impulsive_noise(f, prob=0.1)
-
-# hist_imp,_ = np.histogram(img_imp, bins=256, range=(0,255))
-
-
-# #%%
-# f_r = adaptive_denoising(img_imp, gamma, k, mode)
-# print(rmse(f, f_r))
-
-
-# #%%
-# plt.figure(figsize=(18,6))
-# plt.subplot(131)
-# plt.imshow(f, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-# plt.subplot(132)
-# plt.imshow(img_imp, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-# plt.subplot(133)
-# plt.imshow(f_r, cmap="gray", vmin=0, vmax=255)
-# plt.axis('off')
-
-
-
-
-# #%%
-
-
-#%%
