@@ -1,27 +1,9 @@
 # -*- coding: utf-8 -*-
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.4'
-#       jupytext_version: 1.1.1
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
-
-# +
 # Name: André Moreira Souza
 # NUSP: 9778985
 # Course Code: SCC0251
 # Semester: 2019/1
-# Assignment: 2 - Image enhancement and filtering
-
-
+# Assignment: 3 - Image Restoration
 # -
 
 import numpy as np
@@ -29,7 +11,6 @@ import scipy
 import imageio
 import scipy
 import scipy.fftpack
-
 
 #  ## Defining functions
 
@@ -45,6 +26,7 @@ def adaptive_denoising(g, gamma, k, mode):
 	img_final[:, -(k//2):] = g[:, -(k//2):]
 	
 	# filtering for each mode
+
 	# 'average' mode
 	if mode == 'average':
 		# calculating estimated dispersion measure
@@ -58,7 +40,9 @@ def adaptive_denoising(g, gamma, k, mode):
 				centr_l = np.mean(nh)
 				disp_l = np.std(nh)
 				disp_l = disp_h if disp_l == 0 else disp_l
+				# calculating result image pixels
 				img_final[i][j] = g[i][j] - gamma * (disp_h / disp_l) * (g[i][j] - centr_l)
+
 	# 'robust' mode
 	elif mode == 'robust':
 		# calculating estimated dispersion measure
@@ -74,7 +58,9 @@ def adaptive_denoising(g, gamma, k, mode):
 				centr_l = percents_l[1]
 				disp_l = percents_l[2] - percents_l[0]
 				disp_l = disp_h if disp_l == 0 else disp_l
+				# calculating result image pixels
 				img_final[i][j] = g[i][j] - gamma * (disp_h / disp_l) * (g[i][j] - centr_l)
+
 	# error case: invalid input
 	else: raise ValueError("Unexpected value for mode (should be in ['average', 'robust'])")
 	# returning normalized image
@@ -97,8 +83,8 @@ def constrained_least_squares(g, gamma, k, sigma):
 	upper_h_0 = (g.shape[0] // 2) + (k // 2) + 1
 	lower_h_1 = (g.shape[1] // 2) - (k // 2)
 	upper_h_1 = (g.shape[1] // 2) + (k // 2) + 1
-	h[lower_h_0 : upper_h_0, lower_h_1 : upper_h_1] = \
-		gaussian_filter(k, sigma) # gaussian filter
+	h[lower_h_0 : upper_h_0, lower_h_1 : upper_h_1] = gaussian_filter(k, sigma) # gaussian filter
+
 	# calculating 2d-fft of arrays
 	G = scipy.fftpack.fft2(g)
 	P = scipy.fftpack.fft2(p)
@@ -107,8 +93,11 @@ def constrained_least_squares(g, gamma, k, sigma):
 
 	# calculating final image
 	img_final = np.multiply((H_conj / (np.square(np.absolute(H)) + gamma * np.square(np.absolute(P)))), G)
+	# getting real part of inverse fft
+	img_final = np.real(scipy.fftpack.ifft2(img_final))
     
-	return np.roll(np.real(scipy.fftpack.ifft2(img_final)), np.array(g.shape)//2, (0, 1))
+	# roll image for correct final representation (frequencies on the corners)
+	return np.roll(img_final, np.array(g.shape)//2, (0, 1))
 
 # gaussian_filter function
 def gaussian_filter(k=3, sigma=1.0):
@@ -152,6 +141,5 @@ if __name__ == '__main__':
 		sigma = np.double(input())
 		if (sigma <= 0): raise ValueError("Unexpected value for sigma (should be a float > 0)")
 		f_r = constrained_least_squares(g, gamma, k, sigma)
+	# print rmse of resulting image
 	print('%.3f' % rmse(f, f_r))
-
-
